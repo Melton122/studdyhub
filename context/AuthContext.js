@@ -1,114 +1,51 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { supabase } from '../supabaseConfig.js';
+import React, { useState } from 'react';
+import { View, TextInput, TouchableOpacity, Text, StyleSheet } from 'react-native';
+// Correct: No .js extension
+import { supabase } from '../supabaseConfig'; 
 
+export default function LoginScreen({ navigation }) {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
 
-const AuthContext = createContext({});
+  async function signInWithEmail() {
+    setLoading(true);
+    const { error } = await supabase.auth.signInWithPassword({
+      email: email,
+      password: password,
+    });
 
-export const useAuth = () => useContext(AuthContext);
-
-export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [session, setSession] = useState(null);
-  const [profile, setProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
-
-  // Helper to fetch profile data from your 'user_profiles' table
-  const fetchUserProfile = async (userId) => {
-    try {
-      const { data, error } = await supabase
-        .from('user_profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
-
-      if (error) {
-        console.warn('Profile fetch error:', error.message);
-        return null;
-      }
-      
-      if (data) {
-        setProfile(data);
-        setIsAdmin(data.is_admin || false);
-        return data;
-      }
-    } catch (error) {
-      console.error('Unexpected error fetching profile:', error);
-    }
-    return null;
-  };
-
-  useEffect(() => {
-    // 1. Initialize Auth State
-    const initializeAuth = async () => {
-      try {
-        const { data: { session: initialSession }, error } = await supabase.auth.getSession();
-        
-        if (error) throw error;
-
-        setSession(initialSession);
-        setUser(initialSession?.user ?? null);
-
-        if (initialSession?.user) {
-          await fetchUserProfile(initialSession.user.id);
-        }
-      } catch (err) {
-        console.error("Error initializing auth:", err.message);
-      } finally {
-        // ALWAYS set loading to false to unblock the UI
-        setLoading(false);
-      }
-    };
-
-    initializeAuth();
-
-    // 2. Listen for Auth State Changes (Login, Logout, Token Refresh)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, currentSession) => {
-        console.log('Auth event triggered:', event);
-        
-        setSession(currentSession);
-        setUser(currentSession?.user ?? null);
-        
-        if (currentSession?.user) {
-          await fetchUserProfile(currentSession.user.id);
-        } else {
-          // Reset state on sign out
-          setProfile(null);
-          setIsAdmin(false);
-        }
-        
-        // Ensure loading is false after any state change event
-        setLoading(false);
-      }
-    );
-
-    return () => {
-      if (subscription) subscription.unsubscribe();
-    };
-  }, []);
-
-  const signOut = async () => {
-    try {
-      setLoading(true);
-      await supabase.auth.signOut();
-    } catch (e) {
-      console.error("Sign out error", e);
-    } finally {
-      setLoading(false);
-    }
-  };
+    if (error) alert(error.message);
+    setLoading(false);
+  }
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      session, 
-      profile, 
-      loading, 
-      isAdmin, 
-      signOut 
-    }}>
-      {children}
-    </AuthContext.Provider>
+    <View style={styles.container}>
+      <TextInput
+        style={styles.input}
+        placeholder="Email"
+        onChangeText={(text) => setEmail(text)}
+        value={email}
+        autoCapitalize={'none'}
+      />
+      <TextInput
+        style={styles.input}
+        placeholder="Password"
+        secureTextEntry={true}
+        onChangeText={(text) => setPassword(text)}
+        value={password}
+        autoCapitalize={'none'}
+      />
+      <TouchableOpacity style={styles.button} onPress={() => signInWithEmail()} disabled={loading}>
+        <Text style={styles.buttonText}>{loading ? 'Loading...' : 'Sign In'}</Text>
+      </TouchableOpacity>
+    </View>
   );
-};
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, justifyContent: 'center', padding: 20 },
+  input: { borderBottomWidth: 1, marginBottom: 20, padding: 10 },
+  button: { backgroundColor: '#007AFF', padding: 15, alignItems: 'center' },
+  buttonText: { color: 'white', fontWeight: 'bold' }
+});
