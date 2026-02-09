@@ -4,8 +4,7 @@ import {
   ActivityIndicator, Alert, KeyboardAvoidingView, Platform
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { supabase } from '../supabaseConfig';
-
+import { supabase } from '../supabaseConfig.js';
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
